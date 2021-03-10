@@ -38,6 +38,11 @@ import Foundation
 /// Any undocumented errors thrown are bugs and should be reported.
 ///
 /// - seeAlso: [AXUIElement.h reference](https://developer.apple.com/library/mac/documentation/ApplicationServices/Reference/AXUIElement_header_reference/)
+
+enum AXSwiftError: Error {
+    case badCast(message: String)
+}
+
 open class UIElement {
     public let element: AXUIElement
 
@@ -166,7 +171,7 @@ open class UIElement {
         return try self.attribute(attribute.rawValue)
     }
 
-    open func attribute<T>(_ attribute: String) throws -> T? {
+    open func attribute(_ attribute: String) throws -> Any? {
         var value: AnyObject?
         let error = AXUIElementCopyAttributeValue(element, attribute as CFString, &value)
 
@@ -178,7 +183,16 @@ open class UIElement {
             throw error
         }
 
-        return (unpackAXValue(value!) as! T)
+        return unpackAXValue(value!)
+    }
+    
+    open func attribute<T>(_ attribute: String) throws -> T? {
+        let unpackedValue = try self.attribute(attribute)
+        guard let castedValue = unpackedValue as? T else {
+            throw AXSwiftError.badCast(message: "intended cast: \(T.self) but AXValue was \(unpackedValue)")
+        }
+       
+        return castedValue
     }
 
     /// Sets the value of `attribute` to `value`.
